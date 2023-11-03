@@ -4,4 +4,4 @@ from config import SETTINGS
 
 
 client = motor.motor_asyncio.AsyncIOMotorClient(SETTINGS.MONGODB_URL)
-db = client["fastapi"]
+db = client["podcasts"]
