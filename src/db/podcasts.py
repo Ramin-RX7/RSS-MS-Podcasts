@@ -31,3 +31,38 @@ async def get_podcast_details(identifier):
     data = {**resp_data["podcast"], **podcast.model_dump(exclude=["api_identifier"])}
     return data
 
+
+async def get_podcast_episode_list(podcast_identifier):
+    resp = await podcast_service.podcast_episode_list(podcast_identifier)
+    if not resp: return None
+    resp_episodes = resp.data["episodes"]
+    print(resp_episodes)
+    episode_db_ids = [episode["id"] for episode in resp_episodes]
+    db_episodes = db["episodes"].find({
+        "api_identifier" : {"$in":episode_db_ids},
+    })
+    db_episodes = list(map(lambda episode:Episode(**episode).model_dump(), await db_episodes.to_list(100)))
+    data = merge(db_episodes, resp_episodes)
+    return data
+
+def merge(db, resp):
+    data = []
+    for db_episode in db:
+        api_identifier = db_episode["api_identifier"]
+        for resp_episode in resp:
+            if resp_episode["id"] == api_identifier:
+                data.append({**db_episode,**resp_episode})
+    return data
+
+
+
+async def get_podcast_episode_details(episode_identifier):
+    episode = await db["episodes"].find_one({
+        "_id" : ObjectId(episode_identifier),
+    })
+    if not episode: return
+    episode = Episode(**episode)
+    print(episode)
+    resp = await podcast_service.podcast_episode_details(episode_identifier)
+    if not resp: return None
+    return {**(resp.data), "likes":episode.model_dump()["likes"]}
