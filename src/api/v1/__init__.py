@@ -18,3 +18,14 @@ async def podcast_details(id):
     res = await get_podcast_details(id)
     return res
 
+
+@router.get("/podcast/{id}/episodes")
+async def podcast_episodes(id):
+    res = await get_podcast_episode_list(id)
+    return res
+
+
+@router.get("/podcast/{podcast_id}/episode/{episode_id}")
+async def podcast_episode_detail(podcast_id, episode_id):
+    res = await get_podcast_episode_details(episode_id)
+    return res
