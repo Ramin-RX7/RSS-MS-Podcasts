@@ -9,10 +9,12 @@ class _Config(BaseSettings):
     REDIS_URL : str
     REDIS_KEY_TTL : int
 
+    PODCASTS_URL : str = ""
+
     # REDIX : _RedisConfig
 
     class Config:
-        # env_file = ".env"
+        env_file = ".env"
         extra = "ignore"
         env_nested_delimiter = "_"
 
