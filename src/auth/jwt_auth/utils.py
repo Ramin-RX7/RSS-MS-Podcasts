@@ -19,9 +19,9 @@ def decode_jwt(token): # jwt.exceptions.DecodeError
 
 
 
-def _generate_payload(username):
+def _generate_payload(identifier):
     return {
-        'username': username,
+        'user_identifier': identifier,
         'iat': datetime.utcnow(),
         'jti': uuid4().hex,
     }
@@ -41,8 +41,8 @@ def _generate_access_token(base_payload):
     }
 
 
-def generate_tokens(username) -> tuple[str,str,str]:
-    base_payload = _generate_payload(username)
+def generate_tokens(identifier) -> tuple[str,str,str]:
+    base_payload = _generate_payload(identifier)
     access_payload = _generate_access_token(base_payload)
     refresh_payload = _generate_refresh_token(base_payload)
     return (base_payload["jti"], encode_payload(access_payload), encode_payload(refresh_payload))

@@ -1,9 +1,8 @@
 from fastapi import Request,HTTPException
 
 import jwt
-from db.auth import get_user
 
-from schemas import Result,JWTPayload,User
+from schemas import Result,JWTPayload
 from services import RedisService
 from .utils import (
     decode_jwt,
@@ -32,31 +31,12 @@ class JWTHandler:
     jwt_handler = JWTHandler()
 
     @app.get("/protected-url")
-    async def protected_url(email=Depends(jwt_handler)):
+    async def protected_url(jwt:JWTPayload=Depends(jwt_handler)):
         ...
     """
     def __init__(self):
         self.jwt_auth = JWTAuth()
         self.auth_cache = RedisService()
-
-    async def login(self, email:str, user_agent:str) -> dict[str,str]:
-        """used when user has given correct credentials and new token must be generated for them.
-
-        Args:
-        -----
-        - email `(str)`: _email of the user_
-        - user_agent `(str)`: _http user-agent header_
-
-        Returns:
-        --------
-        `dict[str,str]`: dictionary of {'access':<ACCESS_TOKEN>, 'refresh':<REFRESH_TOKEN>}
-        """
-        jti, access, refresh = self.jwt_auth.generate_tokens(email)
-        await self.jwt_auth.auth_cache.set(f"{email}|{jti}", user_agent)
-        return {
-            "access": access,
-            "refresh": refresh
-        }
 
     async def authenticate(self, request:Request) -> JWTPayload:
         """Main method of this class which is responsible to authenticate users with their access token
@@ -70,75 +50,17 @@ class JWTHandler:
         `JWT_Scheme`: jwt scheme object built from payload
         """
         payload = await self.jwt_auth.authenticate(request.headers)
-        email = payload.get("user_identifier")
+        id = payload.get("user_identifier")
         await self._validate_cache_data(
-            email,
+            id,
             payload.get("jti"),
             request.headers.get("user-agent")
         )
         return JWTPayload(payload)
     __call__ = authenticate
 
-    async def refresh(self, refresh_token:str, user_agent:str):
-        """Must be used when Http:401 status code is raised
-        (which means access token is expired so refresh token must be used)
-
-        Steps:
-        ------
-        - validate refresh token
-        - validate jti with redis
-        - deprecate jti saved in redis
-        - generate new tokens (using self.login)
-
-        Args:
-        -----
-        - refresh_token `(str)`: _Latest generated refresh token of the user_
-        - user_agent `(str)`: _User-agent http header_
-
-        Returns:
-        --------
-        `tuple[str, str, str]`: returns tuple of: jti, access token, refresh token
-        """
-        payload = self.jwt_auth._get_refresh_payload(refresh_token)
-        email = payload.get("user_identifier")
-        jti = payload.get("jti")
-        await self._validate_cache_data(email, jti, user_agent)
-        await self.auth_cache.delete(f"{email}|{jti}")
-        return await self.login(email,user_agent)
-
-
-    async def get_user(self, request:Request()) -> User:
-        """
-        Same as `authenticate` method with extension of also retrieving user from db
-
-        Returns:
-        --------
-        `User`: returns the user based on the data from jwt token payload
-
-        Usage:
-        ------
-        ```python
-        @app.get("/profile")
-        async def profile(user:User=Depends(jwt_handler.get_user)):
-            return user.model_dump()
-        ```
-        """
-        jwt = await self.authenticate(request)
-        email = jwt.payload.get("user_identifier")
-        return await get_user(email=email)
-
-    async def logout(self, email, jti):
-        """Used when user logs out so their data need to be deleted from redis
-
-        Args:
-        -----
-        - email `(str)`: _email of the user_
-        - jti `(str)`: _jti of the user token payload_
-        """
-        await self.auth_cache.delete(f"{email}|{jti}")
-
-    async def _validate_cache_data(self, email, jti, user_agent):
-        user_redis_jti = await self.auth_cache.get(f"{email}|{jti}")
+    async def _validate_cache_data(self, id, jti, user_agent):
+        user_redis_jti = await self.auth_cache.get(f"{id}|{jti}")
         if user_redis_jti is None:
             raise PermissionDenied('Not Found in cache, login again.')
         if user_redis_jti != user_agent:
