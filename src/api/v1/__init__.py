@@ -41,4 +41,17 @@ async def podcast_episodes(id):
 @router.get("/podcast/{podcast_id}/episode/{episode_id}")
 async def podcast_episode_detail(podcast_id, episode_id):
     res = await get_podcast_episode_details(episode_id)
-    return res
+    return res or {"msg": "no episode with this id has been found"}
+
+
+@router.post("/podcast/{podcast_id}/episode/{episode_id}/like")
+async def like_episode_api(podcast_id, episode_id, jwt:JWTPayload=Depends(jwt_object)):
+    res = await like_episode(episode_id, jwt.id)
+    return {"msg":"ok"}
+
+@router.post("/podcast/{podcast_id}/episode/{episode_id}/unlike")
+async def unlike_episode_api(podcast_id, episode_id, jwt:JWTPayload=Depends(jwt_object)):
+    res = await unlike_episode(episode_id, jwt.id)
+    return {"msg":"ok"}
+
+
