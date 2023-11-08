@@ -10,6 +10,13 @@ from services import PodcastAPIService
 podcast_service = PodcastAPIService(SETTINGS.PODCASTS_URL)
 
 
+
+async def get_by_id(collection_name:str, id:str|ObjectId):
+    if type(id) is str:
+        id = ObjectId(id)
+    return await db[collection_name].find_one({"_id":id})
+
+
 async def get_podcast_list():
     resp = await podcast_service.podcast_list()
     if not resp:
@@ -18,10 +25,7 @@ async def get_podcast_list():
 
 
 async def get_podcast_details(identifier):
-    podcast = await db["podcasts"].find_one({
-        # "api_identifier" : int(identifier),
-        "_id" : ObjectId(identifier),
-    })
+    podcast = await get_by_id("podcasts", identifier)
     if podcast is None: return
     podcast = Podcast(**podcast)
     resp = await podcast_service.podcast_details(podcast.api_identifier)
@@ -42,10 +46,10 @@ async def get_podcast_episode_list(podcast_identifier):
         "api_identifier" : {"$in":episode_db_ids},
     })
     db_episodes = list(map(lambda episode:Episode(**episode).model_dump(), await db_episodes.to_list(100)))
-    data = merge(db_episodes, resp_episodes)
+    data = merge_episodes(db_episodes, resp_episodes)
     return data
 
-def merge(db, resp):
+def merge_episodes(db, resp):
     data = []
     for db_episode in db:
         api_identifier = db_episode["api_identifier"]
