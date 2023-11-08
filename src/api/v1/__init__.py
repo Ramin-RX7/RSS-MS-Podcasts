@@ -55,3 +55,14 @@ async def unlike_episode_api(podcast_id, episode_id, jwt:JWTPayload=Depends(jwt_
     return {"msg":"ok"}
 
 
+@router.post("/podcast/{podcast_id}/subscribe/")
+async def subscribe_podcast_api(podcast_id, jwt:JWTPayload=Depends(jwt_object)):
+    res = await subscribe_podcast(podcast_id, jwt.id)
+    return {"msg":"ok"}
+
+@router.post("/podcast/{podcast_id}/unsubscribe/")
+async def unsubscribe_podcast_api(podcast_id, jwt:JWTPayload=Depends(jwt_object)):
+    res = await unsubscribe_podcast(podcast_id, jwt.id)
+    return {"msg":"ok"}
+
+
