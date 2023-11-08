@@ -106,7 +106,6 @@ class JWTAuth:
         user = payload.get("user_identifier")
         jti = payload.get('jti')
         user_agent = self._get_user_agent(headers)
-        await self._validate_cache_data(user, jti, user_agent)
         return payload
 
 
