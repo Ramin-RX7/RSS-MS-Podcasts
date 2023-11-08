@@ -101,3 +101,26 @@ async def unlike_episode(episode_id:str, user_id:str):
         {"_id":episode_id},
         {"$pull": {"liked_episodes": ObjectId(episode_id)}}
     )
+
+async def subscribe_podcast(podcast_id:str, user_id:str):
+    await db["podcasts"].find_one_and_update(
+        {"_id": podcast_id},
+        {"$push": {"subscribers": {"user":ObjectId(user_id)}}}
+                                          #? Make `PodcastSubsStruct` and then dump it?
+    )
+    await db["users"].find_one_and_update(
+        {"_id": podcast_id},
+        {"$push": {"subscriptions": {"podcast":ObjectId(podcast_id)}}}
+                                              #? Make `UserSubsStruct` and then dump it?
+    )
+
+async def unsubscribe_podcast(podcast_id:str, user_id:str):
+    await db["podcasts"].find_one_and_update(
+        {"_id": podcast_id},
+        {"$pull": {"subscribers": {"user":ObjectId(user_id)}}}  #? Make `PodcastSubsStruct` and then dump it?
+    )
+    await db["users"].find_one_and_update(
+        {"_id": podcast_id},
+        {"$pull": {"subscriptions": {"podcast":ObjectId(podcast_id)}}}  #? Make `UserSubsStruct` and then dump it?
+    )
+
