@@ -56,7 +56,7 @@ class JWTHandler:
             payload.get("jti"),
             request.headers.get("user-agent")
         )
-        return JWTPayload(payload)
+        return JWTPayload(id=id, payload=payload)
     __call__ = authenticate
 
     async def _validate_cache_data(self, id, jti, user_agent):
