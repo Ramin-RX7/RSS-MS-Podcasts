@@ -61,12 +61,43 @@ def merge_episodes(db, resp):
 
 
 async def get_podcast_episode_details(episode_identifier):
-    episode = await db["episodes"].find_one({
-        "_id" : ObjectId(episode_identifier),
-    })
+    episode = await get_by_id("episodes", episode_identifier)
     if not episode: return
     episode = Episode(**episode)
-    print(episode)
     resp = await podcast_service.podcast_episode_details(episode_identifier)
     if not resp: return None
+    # episode.likes =
     return {**(resp.data), "likes":episode.model_dump()["likes"]}
+
+
+async def like_episode(episode_id:str, user_id:str):
+    #] Episode validation
+    # episode = await get_podcast_episode_details(episode_id)
+    # if not episode: return
+    #] User validation.  NOTE: we suppose the user is already validated
+    # user = await
+    # if not user: return
+    await db["episodes"].find_one_and_update(
+        {"_id":episode_id},
+        {"$push": {"likes": ObjectId(user_id)}}
+    )
+    await db["users"].find_one_and_update(
+            {"_id":episode_id},
+            {"$push": {"liked_episodes": ObjectId(episode_id)}}
+        )
+
+async def unlike_episode(episode_id:str, user_id:str):
+    #] Episode validation
+    # episode = await get_podcast_episode_details(episode_id)
+    # if not episode: return
+    #] User validation.  NOTE: we suppose the user is already validated
+    # user = await
+    # if not user: return
+    await db["episodes"].find_one_and_update(
+        {"_id":episode_id},
+        {"$pull": {"likes": ObjectId(user_id)}}
+    )
+    await db["users"].find_one_and_update(
+        {"_id":episode_id},
+        {"$pull": {"liked_episodes": ObjectId(episode_id)}}
+    )
