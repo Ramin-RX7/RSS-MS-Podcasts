@@ -81,37 +81,69 @@ async def get_podcast_episode_details(podcast_id:str|ObjectId, episode_id:str|Ob
 
 
 
-async def like_episode(episode_id:str, user_id:str):
+async def like_episode(podcast_id:str,episode_id:str, user_id:str) -> bool:
     #] Episode validation
     # episode = await get_podcast_episode_details(episode_id)
     # if not episode: return
     #] User validation.  NOTE: we suppose the user is already validated
     # user = await
     # if not user: return
-    await db["episodes"].find_one_and_update(
-        {"_id":episode_id},
-        {"$push": {"likes": ObjectId(user_id)}}
-    )
-    await db["users"].find_one_and_update(
-            {"_id":episode_id},
-            {"$push": {"liked_episodes": ObjectId(episode_id)}}
+    podcast_id = ObjectId(podcast_id)
+    user_id = ObjectId(user_id)
+    add_to_podcast = await podcasts_collection.update_one(
+        get_episode_query(podcast_id,episode_id),
+        {"$addToSet": {"episodes.$.likes": user_id}
+    })
+    add_to_user = await db["users"].update_one(
+            {"api_identifier":user_id},
+            {"$addToSet": {
+                "liked_episodes": UserLikeStruct(
+                    podcast_identifier=podcast_id,
+                    episode_identifier=episode_id
+                ).model_dump()
+            }}
         )
 
-async def unlike_episode(episode_id:str, user_id:str):
+    if add_to_user.matched_count == 0:
+        print("here")
+        res = await db["users"].insert_one({
+            "api_identifier": user_id,
+            "liked_episodes": [
+                UserLikeStruct(podcast_identifier=podcast_id, episode_identifier=episode_id).model_dump()
+            ]
+        })
+        return True
+    assert add_to_podcast.modified_count  ==  add_to_user.modified_count, "invalid data found in db"
+    if (add_to_podcast.modified_count != 1)  or  (add_to_user.modified_count != 1):
+        return False
+    return True
+
+
+async def unlike_episode(podcast_id:str, episode_id:str, user_id:str):
     #] Episode validation
     # episode = await get_podcast_episode_details(episode_id)
     # if not episode: return
     #] User validation.  NOTE: we suppose the user is already validated
     # user = await
     # if not user: return
-    await db["episodes"].find_one_and_update(
-        {"_id":episode_id},
-        {"$pull": {"likes": ObjectId(user_id)}}
+    podcast_id = ObjectId(podcast_id)
+    user_id = ObjectId(user_id)
+    rem_from_episode = await podcasts_collection.update_one(
+        get_episode_query(podcast_id,episode_id),
+        {"$pull": {"episodes.$.likes": user_id}
+    })
+    rem_from_user = await db["users"].update_one(
+        {"api_identifier":user_id},
+        {"$pull": {
+            "liked_episodes": {"episode_identifier":episode_id}
+        }}
     )
-    await db["users"].find_one_and_update(
-        {"_id":episode_id},
-        {"$pull": {"liked_episodes": ObjectId(episode_id)}}
-    )
+    assert rem_from_episode.modified_count  ==  rem_from_user.modified_count, "invalid data found in db"
+    if (rem_from_episode.modified_count != 1)  or  (rem_from_user.modified_count != 1):
+        return False
+    return True
+
+
 
 async def subscribe_podcast(podcast_id:str, user_id:str):
     await db["podcasts"].find_one_and_update(

@@ -65,13 +65,15 @@ async def podcast_episode_detail(podcast_id:str, episode_id:str):
 
 @router.post("/podcast/{podcast_id}/episode/{episode_id}/like")
 async def like_episode_api(podcast_id, episode_id, jwt:JWTPayload=Depends(jwt_object)):
-    res = await like_episode(episode_id, jwt.id)
-    return {"msg":"ok"}
+    res = await like_episode(podcast_id,episode_id, jwt.id)
+    return JSONResponse(Result().model_dump(), 201 if res else 208)
+
 
 @router.post("/podcast/{podcast_id}/episode/{episode_id}/unlike")
 async def unlike_episode_api(podcast_id, episode_id, jwt:JWTPayload=Depends(jwt_object)):
-    res = await unlike_episode(episode_id, jwt.id)
-    return {"msg":"ok"}
+    res = await unlike_episode(podcast_id, episode_id, jwt.id)
+    return JSONResponse(Result().model_dump(), 201 if res else 208)
+
 
 
 @router.post("/podcast/{podcast_id}/subscribe/")
