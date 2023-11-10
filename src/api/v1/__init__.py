@@ -83,7 +83,7 @@ async def subscribe_podcast_api(podcast_id, jwt:JWTPayload=Depends(jwt_object)):
 
 @router.post("/podcast/{podcast_id}/unsubscribe/")
 async def unsubscribe_podcast_api(podcast_id, jwt:JWTPayload=Depends(jwt_object)):
-    res = await unsubscribe_podcast(podcast_id, jwt.id)
+    res = await unsubscribe_podcast(ObjectId(podcast_id), ObjectId(jwt.id))
     return {"msg":"ok"}
 
 

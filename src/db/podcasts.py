@@ -95,14 +95,14 @@ async def like_episode(podcast_id:str,episode_id:str, user_id:str) -> bool:
         {"$addToSet": {"episodes.$.likes": user_id}
     })
     add_to_user = await db["users"].update_one(
-            {"api_identifier":user_id},
-            {"$addToSet": {
-                "liked_episodes": UserLikeStruct(
-                    podcast_identifier=podcast_id,
-                    episode_identifier=episode_id
-                ).model_dump()
-            }}
-        )
+        {"api_identifier":user_id},
+        {"$addToSet": {
+            "liked_episodes": UserLikeStruct(
+                podcast_identifier=podcast_id,
+                episode_identifier=episode_id
+            ).model_dump()
+        }}
+    )
 
     if add_to_user.matched_count == 0:
         print("here")
@@ -119,7 +119,7 @@ async def like_episode(podcast_id:str,episode_id:str, user_id:str) -> bool:
     return True
 
 
-async def unlike_episode(podcast_id:str, episode_id:str, user_id:str):
+async def unlike_episode(podcast_id:str, episode_id:str, user_id:str) -> bool:
     #] Episode validation
     # episode = await get_podcast_episode_details(episode_id)
     # if not episode: return
@@ -145,27 +145,42 @@ async def unlike_episode(podcast_id:str, episode_id:str, user_id:str):
 
 
 
-async def subscribe_podcast(podcast_id:str, user_id:str):
-    await db["podcasts"].find_one_and_update(
+async def subscribe_podcast(podcast_id:str, user_id:str) -> bool:
+    podcast_id = ObjectId(podcast_id)
+    user_id = ObjectId(user_id)
+    add_to_podcast =  await db["podcasts"].find_one_and_update(
         {"_id": podcast_id},
-        {"$push": {"subscribers": {"user":ObjectId(user_id)}}}
+        {"$addToSet": {"subscribers": {"user":user_id}}}
                                           #? Make `PodcastSubsStruct` and then dump it?
     )
-    await db["users"].find_one_and_update(
-        {"_id": podcast_id},
-        {"$push": {"subscriptions": {"podcast":ObjectId(podcast_id)}}}
+    add_to_user = await db["users"].update_one(
+        {"api_identifier": user_id},
+        {"$addToSet": {"subscriptions": {"podcast":podcast_id}}}
                                               #? Make `UserSubsStruct` and then dump it?
     )
+    if add_to_user.matched_count == 0:
+        res = await db["users"].insert_one({
+            "api_identifier": user_id,
+            "subscriptions": {"podcast":podcast_id}
+        })
+    assert add_to_podcast.modified_count  ==  add_to_user.modified_count, "invalid data found in db"
+    if (add_to_podcast.modified_count != 1)  or  (add_to_user.modified_count != 1):
+        return False
+    return True
 
-async def unsubscribe_podcast(podcast_id:str, user_id:str):
-    await db["podcasts"].find_one_and_update(
+async def unsubscribe_podcast(podcast_id:ObjectId, user_id:ObjectId) -> bool:
+    rem_from_episode = await db["podcasts"].update_one(
         {"_id": podcast_id},
-        {"$pull": {"subscribers": {"user":ObjectId(user_id)}}}  #? Make `PodcastSubsStruct` and then dump it?
+        {"$pull": {"subscribers": {"user":user_id}}}  #? Make `PodcastSubsStruct` and then dump it?
     )
-    await db["users"].find_one_and_update(
-        {"_id": podcast_id},
-        {"$pull": {"subscriptions": {"podcast":ObjectId(podcast_id)}}}  #? Make `UserSubsStruct` and then dump it?
+    rem_from_user = await db["users"].update_one(
+        {"api_identifier": user_id},
+        {"$pull": {"subscriptions": {"podcast":podcast_id}}}  #? Make `UserSubsStruct` and then dump it?
     )
+    assert rem_from_episode.modified_count  ==  rem_from_user.modified_count, "invalid data found in db"
+    if (rem_from_episode.modified_count != 1)  or  (rem_from_user.modified_count != 1):
+        return False
+    return True
 
 
 
