@@ -167,3 +167,41 @@ async def unsubscribe_podcast(podcast_id:str, user_id:str):
         {"$pull": {"subscriptions": {"podcast":ObjectId(podcast_id)}}}  #? Make `UserSubsStruct` and then dump it?
     )
 
+
+
+async def update_db():  #? make this a celery task? (Problems: 3.async db  2.Async api service)
+    #] Create unsaved podcasts
+    # retrive podcast list
+    podcasts = (await podcast_service.podcast_list()).data["podcasts"]
+    podcast_ids = set(map(lambda podcast:podcast['id'], podcasts)) # This must be a method in podcastService
+
+    #? remove podcasts in db that are not represent in responses
+
+    # Check for new podcasts
+    db_podcasts = podcasts_collection.find({
+        "api_identifier":{"$in":list(podcast_ids)}},
+        projection={"_id":0, "api_identifier":1}
+    )
+    db_podcasts_ids = {podcast['api_identifier'] for podcast in (await db_podcasts.to_list(100))}
+    unsaved_podcasts_ids = podcast_ids - db_podcasts_ids
+
+    for podcast_id in unsaved_podcasts_ids:
+        # retrieve episodes
+        episodes = (await podcast_service.podcast_episode_list(podcast_id))
+        db_episode_list = [
+            Episode.model_validate({"api_identifier":episode["id"],"_id":ObjectId()}).
+                model_dump() for episode in episodes.data["episodes"]
+        ]
+        # check and create new episodes in db
+        # await episodes_collection.insert_many(db_episode_list)
+        await podcasts_collection.insert_one({
+            "api_identifier": podcast_id,
+            "subscribers": [],
+            "episodes": db_episode_list
+        })
+
+
+    #] Update existing podcasts
+    #? remove episodes in db that are not represent in responses
+    # publish updated podcast data to rabbit (for `notification` micro-service)
+    ...

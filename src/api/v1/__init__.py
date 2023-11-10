@@ -87,3 +87,12 @@ async def unsubscribe_podcast_api(podcast_id, jwt:JWTPayload=Depends(jwt_object)
     return {"msg":"ok"}
 
 
+
+@router.post("/update/")
+async def update_db_api(): #jwt:JWTPayload=Depends(jwt_object)
+    # check if user has permission to do this
+
+    # call `update_db` function
+    await update_db()
+
+    return Result().model_dump()
