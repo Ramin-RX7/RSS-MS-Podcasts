@@ -1,17 +1,24 @@
-from fastapi import APIRouter, Depends
+from bson import ObjectId
+import bson.errors
+
+from fastapi import APIRouter, Depends, HTTPException,status
+from fastapi.responses import JSONResponse
 
 from auth import JWTHandler
+from db import db
 from db.podcasts import (
     get_podcast_details,
     get_podcast_episode_details,
-    get_podcast_episode_list,
+    # get_podcast_episode_list,
     get_podcast_list,
     like_episode,
     subscribe_podcast,
     unlike_episode,
     unsubscribe_podcast,
+    update_db,
 )
-from schemas.jwt import JWTPayload
+from schemas import JWTPayload, Podcast,Result
+
 
 
 router = APIRouter(prefix='/v1')
@@ -20,14 +27,26 @@ jwt_object = JWTHandler()
 
 
 
+
+def validate_id(id:str):
+    try:
+        return ObjectId(id)
+    except bson.errors.InvalidId:
+        raise HTTPException(404, "Not found")
+
+
 @router.get("/podcasts")
 async def podcast_list():
-    res = await get_podcast_list()
-    return res or {"msg":"not podcast found"}
+    res = await db["podcasts"].find(projection={"episodes":0,"subscribers":0}).to_list(100)
+    if res:
+        return list(map(
+            lambda item: item.model_dump(exclude_defaults=True), map(Podcast.model_validate, res)
+        ))
+    return {"msg":"not podcast found"}
 
 
 @router.get("/podcast/{id}")
-async def podcast_details(id):
+async def podcast_details(id:str=Depends(validate_id)):
     res = await get_podcast_details(id)
     return res or {"msg":"no podcast with this id found"}
 

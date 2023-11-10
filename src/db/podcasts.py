@@ -2,19 +2,25 @@ from bson import ObjectId
 
 from db import db
 from config import SETTINGS
-from schemas import Podcast,Episode
+from schemas import Podcast,Episode, UserLikeStruct
 from services import PodcastAPIService
 
 
 
 podcast_service = PodcastAPIService(SETTINGS.PODCASTS_URL)
-
+podcasts_collection = db["podcasts"]
+episodes_collection = db["episodes"]
 
 
 async def get_by_id(collection_name:str, id:str|ObjectId):
     if type(id) is str:
         id = ObjectId(id)
     return await db[collection_name].find_one({"_id":id})
+
+
+def get_episode_query(podcast_id,episode_id):
+    query = {"_id": podcast_id, "episodes.id": str(episode_id)}
+    return query
 
 
 async def get_podcast_list():
@@ -24,7 +30,7 @@ async def get_podcast_list():
     return resp.data
 
 
-async def get_podcast_details(identifier):
+async def get_podcast_details(identifier:str|ObjectId):
     podcast = await get_by_id("podcasts", identifier)
     if podcast is None: return
     podcast = Podcast(**podcast)
@@ -36,27 +42,27 @@ async def get_podcast_details(identifier):
     return data
 
 
-async def get_podcast_episode_list(podcast_identifier):
-    resp = await podcast_service.podcast_episode_list(podcast_identifier)
-    if not resp: return None
-    resp_episodes = resp.data["episodes"]
-    print(resp_episodes)
-    episode_db_ids = [episode["id"] for episode in resp_episodes]
-    db_episodes = db["episodes"].find({
-        "api_identifier" : {"$in":episode_db_ids},
-    })
-    db_episodes = list(map(lambda episode:Episode(**episode).model_dump(), await db_episodes.to_list(100)))
-    data = merge_episodes(db_episodes, resp_episodes)
-    return data
+# async def get_podcast_episode_list(podcast_identifier):
+#     resp = await podcast_service.podcast_episode_list(podcast_identifier)
+#     if not resp: return None
+#     resp_episodes = resp.data["episodes"]
+#     print(resp_episodes)
+#     episode_db_ids = [episode["id"] for episode in resp_episodes]
+#     db_episodes = db["episodes"].find({
+#         "api_identifier" : {"$in":episode_db_ids},
+#     })
+#     db_episodes = list(map(lambda episode:Episode(**episode).model_dump(), await db_episodes.to_list(100)))
+#     data = merge_episodes(db_episodes, resp_episodes)
+#     return data
 
-def merge_episodes(db, resp):
-    data = []
-    for db_episode in db:
-        api_identifier = db_episode["api_identifier"]
-        for resp_episode in resp:
-            if resp_episode["id"] == api_identifier:
-                data.append({**db_episode,**resp_episode})
-    return data
+# def merge_episodes(db, resp):
+#     data = []
+#     for db_episode in db:
+#         api_identifier = db_episode["api_identifier"]
+#         for resp_episode in resp:
+#             if resp_episode["id"] == api_identifier:
+#                 data.append({**db_episode,**resp_episode})
+#     return data
 
 
 
