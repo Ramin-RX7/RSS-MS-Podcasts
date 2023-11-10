@@ -51,16 +51,16 @@ async def podcast_details(id:str=Depends(validate_id)):
     return res or {"msg":"no podcast with this id found"}
 
 
-@router.get("/podcast/{id}/episodes")
-async def podcast_episodes(id):
-    res = await get_podcast_episode_list(id)
-    return res or {"msg":"no episodes found"}
-
+# @router.get("/podcast/{id}/episodes")
+# async def podcast_episodes(id):
+#     res = await get_podcast_episode_list(id)
+#     return res or {"msg":"no episodes found"}
 
 @router.get("/podcast/{podcast_id}/episode/{episode_id}")
-async def podcast_episode_detail(podcast_id, episode_id):
-    res = await get_podcast_episode_details(episode_id)
+async def podcast_episode_detail(podcast_id:str, episode_id:str):
+    res = await get_podcast_episode_details(ObjectId(podcast_id), ObjectId(episode_id))
     return res or {"msg": "no episode with this id has been found"}
+
 
 
 @router.post("/podcast/{podcast_id}/episode/{episode_id}/like")

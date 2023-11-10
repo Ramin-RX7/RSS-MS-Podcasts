@@ -66,14 +66,19 @@ async def get_podcast_details(identifier:str|ObjectId):
 
 
 
-async def get_podcast_episode_details(episode_identifier):
-    episode = await get_by_id("episodes", episode_identifier)
-    if not episode: return
-    episode = Episode(**episode)
-    resp = await podcast_service.podcast_episode_details(episode_identifier)
-    if not resp: return None
-    # episode.likes =
-    return {**(resp.data), "likes":episode.model_dump()["likes"]}
+async def get_podcast_episode_details(podcast_id:str|ObjectId, episode_id:str|ObjectId):
+    query = get_episode_query(podcast_id,episode_id)
+    projection = {"episodes.$": 1,"api_identifier":1}
+    podcast = await podcasts_collection.find_one(query,projection=projection)
+    if not podcast: return
+    podcast = Podcast.model_validate(podcast)
+    episode = Episode.model_validate(podcast.episodes[0])
+
+    resp = await podcast_service.podcast_episode_details(podcast.api_identifier,episode.api_identifier)
+    if not resp: return
+
+    return {**(resp.data["episode"]), "likes":episode.model_dump()["likes"]}
+
 
 
 async def like_episode(episode_id:str, user_id:str):
