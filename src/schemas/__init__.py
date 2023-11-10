@@ -26,7 +26,7 @@ class MongoScheme(BaseModel):
     def id_serializer(self, id, _info):
         return str(id)
 
-    @field_validator("id")
+    @field_validator("id", mode="before")
     def id_validator(cls, v):
         if type(v) is str:
             return ObjectId(v)
@@ -85,24 +85,50 @@ class PodcastSubsStruct(BaseModel):
 
 
 
-class Episode(MongoScheme):
+class Episode(BaseModel):
     api_identifier : EPISODE_ID
     likes : list[ObjectId] = []
     comments : list[CommentStruct] = []
+    id : ObjectId|None = Field(default_factory=ObjectId)
+
+    class Config:
+        arbitrary_types_allowed=True
+
+    @field_serializer('id')
+    def id_serializer(self, id, _info):
+        return str(id)
+
+    @field_validator("id", mode="before")
+    def id_validator(cls, v):
+        if type(v) is str:
+            return ObjectId(v)
+        return v
 
     @field_serializer('likes')
-    def id_serializer(self, likes, _info):
+    def likes_serializer(self, likes, _info):
         return list(map(lambda item:str(item), likes))
+
 
 
 class Podcast(MongoScheme):
     api_identifier : PODCAST_ID
     subscribers : list[PodcastSubsStruct] = []
+    episodes : list[Episode] = []
+
+
+
+class UserLikeStruct(BaseModel):
+    podcast_identifier : ObjectId
+    episode_identifier : str
+
+    class Config:
+        arbitrary_types_allowed=True
+
 
 
 class User(MongoScheme):
     api_identifier : USER_ID
-    liked_episodes : list[ObjectId]
+    liked_episodes : list[UserLikeStruct] = []
     subscriptions : list[UserSubsStruct] = []
 
     @field_serializer('liked_episodes')
